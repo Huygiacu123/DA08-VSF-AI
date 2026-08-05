@@ -1,40 +1,37 @@
-name: deploy-iap-verify (manual)
+name: deploy-ssh-verify (manual)
 
-# Verify HARNESS cho việc khóa SSH (IAP + OS Login + WIF) — KHÔNG deploy, chỉ kiểm
-# tra đường vào mới hoạt động đầu-cuối TRƯỚC khi cutover job deploy thật.
-#   WIF (keyless) -> impersonate github-deploy@ -> gcloud ssh --tunnel-through-iap
-#   -> chứng minh: login được, có sudo, chạy được docker (điều deploy.sh cần).
-# Chạy TAY (workflow_dispatch). Chỉ PASS sau khi OS Login đã bật trên VM.
+# Verify HARNESS cho VPS trial (df789.online, 2026-08-05) — KHÔNG deploy, chỉ kiểm tra
+# đường SSH key (SSH_HOST/SSH_USER/SSH_PRIVATE_KEY) hoạt động đầu-cuối TRƯỚC khi chạy
+# deploy.yml thật. Thay thế bản GCP WIF+IAP cũ (VPS này không phải GCP).
+# Chạy TAY (workflow_dispatch).
 
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write        # bắt buộc cho WIF (OIDC token)
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Auth GCP qua Workload Identity Federation (không key tĩnh)
-        uses: google-github-actions/auth@v2
-        with:
-          project_id: vintravel-chatbot
-          workload_identity_provider: projects/289299478169/locations/global/workloadIdentityPools/github-actions/providers/github
-          service_account: github-deploy@vintravel-chatbot.iam.gserviceaccount.com
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: IAP SSH read-only — chứng minh login + sudo + docker
+      - name: SSH read-only — chứng minh login + sudo + docker
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          gcloud compute ssh vsf-rag-demo-vm \
-            --zone=asia-southeast1-a --tunnel-through-iap --quiet \
-            --command='
+          set -euo pipefail
+          SSHKEY="$(mktemp)"
+          trap 'rm -f "$SSHKEY"' EXIT
+          printf '%s' "$SSH_PRIVATE_KEY" > "$SSHKEY"
+          chmod 600 "$SSHKEY"
+          ssh -i "$SSHKEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+            "${SSH_USER}@${SSH_HOST}" '
               echo "=== WHOAMI ==="; whoami; id
               echo "=== SUDO ==="; sudo -n true && echo SUDO_OK || echo NO_SUDO
               echo "=== DOCKER ==="; docker ps --format "{{.Names}}" | head -5 || echo DOCKER_FAIL
-              echo "=== APP_DIR ==="; ls -d /opt/da08-vsf /home/TOMAP/DA08-VSF 2>/dev/null
+              echo "=== APP_DIR ==="; ls -d /home/TOMAP/DA08-VSF 2>/dev/null || echo "APP_DIR chưa clone"
               echo "=== VERIFY_DONE ==="
             '

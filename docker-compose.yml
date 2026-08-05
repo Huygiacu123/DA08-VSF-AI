@@ -115,7 +115,7 @@ services:
       # (Cloudflare TLS -> origin nginx :80 -> langfuse:3000, gác Basic Auth). NEXTAUTH_URL
       # PHẢI = URL công khai này để login redirect/callback đúng. Cổng loopback 3100 GIỮ LẠI
       # cho deploy.sh readiness check (http://localhost:3100/api/public/*), KHÔNG dùng để vào UI.
-      NEXTAUTH_URL: https://langfuse.vsfchat.cloud
+      NEXTAUTH_URL: https://langfuse.df789.online
       TELEMETRY_ENABLED: "true"
       # Bootstrap headless: boot lần đầu tự tạo org + project + ĐÓNG ĐINH cặp key (= common.env).
       # ⚠ LANGFUSE_INIT_ORG_ID là CỜ KÍCH HOẠT — thiếu nó thì init KHÔNG chạy (key không tạo -> 401).
@@ -314,228 +314,9 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # Replica-2: clone query-service, KHÔNG bind host port -> nginx tới qua tên service (upstream).
-  query-service-2:
-    image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/query-service:${IMAGE_TAG:-main}
-    env_file:
-      - ./deploy/env/common.env
-      - ./deploy/env/query-service.env
-      - ./deploy/env/secret.env
-    environment:
-      <<: *newrelic
-      NEW_RELIC_APP_NAME: vsf-query-service
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@app-postgres:5432/query_db
-      DB_POOL_MIN_SIZE: "2"
-      DB_POOL_MAX_SIZE: "8"
-    depends_on:
-      app-postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      redis:
-        condition: service_started
-      nats-bootstrap:
-        condition: service_completed_successfully
-      query-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 8s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
-
-  # Replica 3-6: clone (e2-custom-16 -> 6 replica query-service tổng, mỗi container 1 uvicorn = SSE an
-  # toàn). nginx `upstream query_pool` round-robin cả 6 -> chia tải event-loop+DB ở 150-burst heavy.
-  query-service-3:
-    image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/query-service:${IMAGE_TAG:-main}
-    env_file:
-      - ./deploy/env/common.env
-      - ./deploy/env/query-service.env
-      - ./deploy/env/secret.env
-    environment:
-      <<: *newrelic
-      NEW_RELIC_APP_NAME: vsf-query-service
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@app-postgres:5432/query_db
-      DB_POOL_MIN_SIZE: "2"
-      DB_POOL_MAX_SIZE: "8"
-    depends_on:
-      app-postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      redis:
-        condition: service_started
-      nats-bootstrap:
-        condition: service_completed_successfully
-      query-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 8s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
-
-  query-service-4:
-    image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/query-service:${IMAGE_TAG:-main}
-    env_file:
-      - ./deploy/env/common.env
-      - ./deploy/env/query-service.env
-      - ./deploy/env/secret.env
-    environment:
-      <<: *newrelic
-      NEW_RELIC_APP_NAME: vsf-query-service
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@app-postgres:5432/query_db
-      DB_POOL_MIN_SIZE: "2"
-      DB_POOL_MAX_SIZE: "8"
-    depends_on:
-      app-postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      redis:
-        condition: service_started
-      nats-bootstrap:
-        condition: service_completed_successfully
-      query-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 8s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
-
-  query-service-5:
-    image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/query-service:${IMAGE_TAG:-main}
-    env_file:
-      - ./deploy/env/common.env
-      - ./deploy/env/query-service.env
-      - ./deploy/env/secret.env
-    environment:
-      <<: *newrelic
-      NEW_RELIC_APP_NAME: vsf-query-service
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@app-postgres:5432/query_db
-      DB_POOL_MIN_SIZE: "2"
-      DB_POOL_MAX_SIZE: "8"
-    depends_on:
-      app-postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      redis:
-        condition: service_started
-      nats-bootstrap:
-        condition: service_completed_successfully
-      query-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 8s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
-
-  query-service-6:
-    image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/query-service:${IMAGE_TAG:-main}
-    env_file:
-      - ./deploy/env/common.env
-      - ./deploy/env/query-service.env
-      - ./deploy/env/secret.env
-    environment:
-      <<: *newrelic
-      NEW_RELIC_APP_NAME: vsf-query-service
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@app-postgres:5432/query_db
-      DB_POOL_MIN_SIZE: "2"
-      DB_POOL_MAX_SIZE: "8"
-    depends_on:
-      app-postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      redis:
-        condition: service_started
-      nats-bootstrap:
-        condition: service_completed_successfully
-      query-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 8s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
-
-  # Replica 7-8: TRACE 150-burst 2026-06-25 -> 5-6 replica VẪN pegged 100% CPU (mcp/qdrant RỖNG)
-  # -> plan-stream bị cắt (fallback 51) + rag timeout (breaker 65). 8 replica: 150/8≈19/loop < ngưỡng
-  # peg (~25-30) -> stream plan KHÔNG cắt + rag service kịp. 8×4×8=256 < PG max_connections=300.
-  query-service-7:
-    image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/query-service:${IMAGE_TAG:-main}
-    env_file:
-      - ./deploy/env/common.env
-      - ./deploy/env/query-service.env
-      - ./deploy/env/secret.env
-    environment:
-      <<: *newrelic
-      NEW_RELIC_APP_NAME: vsf-query-service
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@app-postgres:5432/query_db
-      DB_POOL_MIN_SIZE: "2"
-      DB_POOL_MAX_SIZE: "8"
-    depends_on:
-      app-postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      redis:
-        condition: service_started
-      nats-bootstrap:
-        condition: service_completed_successfully
-      query-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 8s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
-
-  query-service-8:
-    image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/query-service:${IMAGE_TAG:-main}
-    env_file:
-      - ./deploy/env/common.env
-      - ./deploy/env/query-service.env
-      - ./deploy/env/secret.env
-    environment:
-      <<: *newrelic
-      NEW_RELIC_APP_NAME: vsf-query-service
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@app-postgres:5432/query_db
-      DB_POOL_MIN_SIZE: "2"
-      DB_POOL_MAX_SIZE: "8"
-    depends_on:
-      app-postgres:
-        condition: service_healthy
-      nats:
-        condition: service_started
-      redis:
-        condition: service_started
-      nats-bootstrap:
-        condition: service_completed_successfully
-      query-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 8s
-      retries: 12
-      start_period: 20s
-    restart: unless-stopped
+  # VPS trial (df789.online, 4 vCPU/5.8GB, 2026-08-05): hạ từ 8 replica xuống 1 duy nhất
+  # (query-service ở trên) để vừa tài nguyên VPS. nginx upstream query_pool cũng giảm còn
+  # 1 server tương ứng. Khôi phục replica 2-8 (xem git history) nếu chuyển sang máy lớn hơn.
 
   # ───────────── AI Router (gateway OpenAI-compatible, stateless) ─────────────
   # Đứng GIỮA AI-logic service và provider (OpenAI/OpenRouter). Service trỏ base_url
@@ -711,7 +492,7 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
     deploy:
-      replicas: 8
+      replicas: 1  # VPS trial 2026-08-05: hạ từ 8 (xem comment nginx.conf/deploy.sh cùng lý do)
 
   mcp-service:
     image: ${DOCKERHUB_USERNAME:-CHANGE_ME}/mcp-service:${IMAGE_TAG:-main}
@@ -829,13 +610,6 @@ services:
       - user-service
       - document-service
       - query-service
-      - query-service-2
-      - query-service-3
-      - query-service-4
-      - query-service-5
-      - query-service-6
-      - query-service-7
-      - query-service-8
       - mcp-service
       - hr-service
       - rag-worker

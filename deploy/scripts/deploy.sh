@@ -96,9 +96,9 @@ if [ -f "$WIPE_TOKEN_FILE" ]; then
 fi
 
 echo "==> 4) Up image đã pull (query/rag/hr migrations chạy one-shot và fail-fast)"
-# rag-ingest-worker: ingest-only, scale N=4 (rebalance: N=8 thừa, chỉ queue tại ai-router MAXED
-# 401% -> dồn core sang ai-router UVICORN_WORKERS 6). compose up BỎ QUA deploy.replicas -> --scale.
-docker compose up -d --no-build --scale rag-ingest-worker=8 qdrant langfuse-db langfuse nats-bootstrap query-migrate rag-worker rag-ingest-worker mcp-service hr-service user-service gotenberg document-service query-service ai-router frontend-chat frontend-admin \
+# VPS trial (df789.online, 4 vCPU/5.8GB, 2026-08-05): scale=1 (bản gốc 8, thừa tài nguyên VPS
+# nhỏ). compose up BỎ QUA deploy.replicas -> --scale. Nâng lại khi chuyển máy lớn hơn.
+docker compose up -d --no-build --scale rag-ingest-worker=1 qdrant langfuse-db langfuse nats-bootstrap query-migrate rag-worker rag-ingest-worker mcp-service hr-service user-service gotenberg document-service query-service ai-router frontend-chat frontend-admin \
   || { echo "::error::compose up FAILED — dump migration + nats-bootstrap logs:"; \
        docker logs da08-vsf-hr-migrate-1 2>&1 | tail -80 || true; \
        docker logs da08-vsf-user-migrate-1 2>&1 | tail -40 || true; \
@@ -107,6 +107,9 @@ docker compose up -d --no-build --force-recreate nginx
 
 # Monitor stack (file riêng, overlay CÙNG project -> chung network) — NON-FATAL.
 # Hỏng chỉ mất biểu đồ/alert, KHÔNG chặn deploy app.
+# VPS trial 2026-08-05: SKIP mặc định (Prometheus/Grafana/Loki/Tempo/Alertmanager tốn RAM đáng kể
+# trên VPS 5.8GB) -> set SKIP_OBSERVABILITY=0 (env/secret) để bật lại khi có máy dư tài nguyên.
+if [ "${SKIP_OBSERVABILITY:-1}" != "1" ]; then
 OBS="-f docker-compose.yml -f docker-compose.observability.yml"
 # Service ĐỌC CONFIG FILE (prometheus scrape+rules, alertmanager, otel-collector): FORCE-RECREATE
 # mỗi deploy để CHẮC CHẮN nạp config mới (reload qua exec/wget không đáng tin giữa các image ->
@@ -118,6 +121,9 @@ docker compose $OBS up -d --no-build grafana node-exporter tempo loki \
   || echo "::warning::monitor stack (grafana/exporters/tempo/loki) up FAILED — app KHÔNG ảnh hưởng"
 # Dọn cadvisor cũ (đã gỡ khỏi stack) nếu còn chạy orphan.
 docker rm -f da08-vsf-cadvisor-1 >/dev/null 2>&1 || true
+else
+  echo "  SKIP_OBSERVABILITY=1 -> bỏ qua Prometheus/Grafana/Loki/Tempo/Alertmanager (VPS trial)"
+fi
 
 # ── Auto-migration on config change (NON-FATAL, IDEMPOTENT) ─────────────────────────────
 # 2 nhánh trong cùng script (detect tự động):
