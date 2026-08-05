@@ -623,7 +623,7 @@ jobs:
           # cuối (kể cả khi ssh fail, do set -e thoát ngay tại lệnh lỗi).
           SSHKEY="$(mktemp)"
           trap 'rm -f "$SSHKEY"' EXIT
-          printf '%s' "$SSH_PRIVATE_KEY" > "$SSHKEY"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSHKEY"
           chmod 600 "$SSHKEY"
           SSH_OPTS=(-i "$SSHKEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
           RTMP="/tmp/deploy-payload-${GITHUB_RUN_ID}.sh"

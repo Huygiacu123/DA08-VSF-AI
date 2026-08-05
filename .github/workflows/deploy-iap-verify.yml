@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           SSHKEY="$(mktemp)"
           trap 'rm -f "$SSHKEY"' EXIT
-          printf '%s' "$SSH_PRIVATE_KEY" > "$SSHKEY"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSHKEY"
           chmod 600 "$SSHKEY"
           ssh -i "$SSHKEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
             "${SSH_USER}@${SSH_HOST}" '
