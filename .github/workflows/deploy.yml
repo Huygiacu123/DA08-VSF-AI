@@ -54,6 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       services: ${{ steps.matrix.outputs.services }}
+      skip_unit: ${{ steps.matrix.outputs.skip_unit }}
       run_rag: ${{ steps.matrix.outputs.run_rag }}
       run_hr: ${{ steps.matrix.outputs.run_hr }}
       run_e2e_cloud: ${{ steps.matrix.outputs.run_e2e_cloud }}
@@ -130,11 +131,13 @@ jobs:
             rrwlf=$(has '.=="rag-worker"')
             rd=$(has '.=="rag-worker" or .=="mcp-service" or .=="hr-service" or .=="user-service" or .=="document-service" or .=="query-service" or .=="ai-router" or .=="frontend" or .=="nginx" or .=="base"')
           fi
-          # Bỏ qua validate nhưng GIỮ build + deploy. (fix 2026-08-05: trước đây SVC/rfe KHÔNG bị
-          # xoá -> unit/frontend-test vẫn chạy dù skip_tests=true, sai với comment/ý định gốc.)
+          # Bỏ qua validate nhưng GIỮ build + deploy. (fix 2026-08-05 lần 2: SVC dùng CHUNG cho cả
+          # unit-test matrix VÀ build-push matrix -> xoá SVC vô tình làm build-push cũng rỗng theo.
+          # Dùng cờ riêng skip_unit -> unit/frontend-test job tự if-check, KHÔNG đụng SVC.)
+          skip_unit=false
           if [ "$SKIP" = "true" ]; then
-            rrag=false; rhr=false; rec=false; rlf=false; rls=false; rrwlf=false; rfe=false
-            SVC='[]'
+            rrag=false; rhr=false; rec=false; rlf=false; rls=false; rrwlf=false
+            skip_unit=true
             echo "::notice::skip-tests bật -> BỎ QUA Phase 1 validate (kể cả unit/frontend-test), chỉ build + deploy"
           fi
           # SOFT-DETECT migration embedding: marker [embed-migration] HOẶC EMBED_MODEL đổi trong
@@ -149,6 +152,7 @@ jobs:
           fi
           {
             echo "services=$SVC"
+            echo "skip_unit=$skip_unit"
             echo "run_rag=$rrag"
             echo "run_hr=$rhr"
             echo "run_e2e_cloud=$rec"
@@ -167,7 +171,7 @@ jobs:
   # để Phase 2 e2e lo.
   unit:
     needs: detect
-    if: needs.detect.outputs.services != '[]'
+    if: needs.detect.outputs.services != '[]' && needs.detect.outputs.skip_unit != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -204,7 +208,7 @@ jobs:
 
   frontend-test:
     needs: detect
-    if: needs.detect.outputs.run_frontend == 'true'
+    if: needs.detect.outputs.run_frontend == 'true' && needs.detect.outputs.skip_unit != 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
