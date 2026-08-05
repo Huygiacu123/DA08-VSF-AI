@@ -47,7 +47,17 @@ done
 
 echo "==> 3) Login Docker Hub + PULL image (KHÔNG build trên VM)"
 echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-docker compose pull qdrant langfuse-db langfuse nats-bootstrap rag-worker rag-ingest-worker mcp-service hr-service user-service gotenberg document-service query-migrate query-service ai-router frontend-chat frontend-admin nginx
+# VPS trial (df789.online, 2026-08-05): VPS này có mạng quốc tế tới Docker Hub/Cloudflare
+# đôi lúc chập chờn ("connection reset by peer", "TLS handshake timeout") — retry 5 lần, nghỉ
+# 10s giữa các lần, trước khi coi là fail thật.
+for attempt in 1 2 3 4 5; do
+  if docker compose pull qdrant langfuse-db langfuse nats-bootstrap rag-worker rag-ingest-worker mcp-service hr-service user-service gotenberg document-service query-migrate query-service ai-router frontend-chat frontend-admin nginx; then
+    break
+  fi
+  echo "::warning::docker compose pull FAIL (attempt $attempt/5) — có thể do mạng chập chờn, thử lại sau 10s"
+  [ "$attempt" = 5 ] && { echo "::error::docker compose pull FAIL sau 5 lần thử -> DỪNG"; exit 1; }
+  sleep 10
+done
 
 # VPS trial (df789.online, 2026-08-05): pre-flight dùng --no-deps (giả định app-postgres đã
 # chạy sẵn từ lần deploy trước). Lần deploy ĐẦU TIÊN trên máy trống -> app-postgres chưa tồn
