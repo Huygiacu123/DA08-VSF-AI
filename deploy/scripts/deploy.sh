@@ -49,6 +49,17 @@ echo "==> 3) Login Docker Hub + PULL image (KHÔNG build trên VM)"
 echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 docker compose pull qdrant langfuse-db langfuse nats-bootstrap rag-worker rag-ingest-worker mcp-service hr-service user-service gotenberg document-service query-migrate query-service ai-router frontend-chat frontend-admin nginx
 
+# VPS trial (df789.online, 2026-08-05): pre-flight dùng --no-deps (giả định app-postgres đã
+# chạy sẵn từ lần deploy trước). Lần deploy ĐẦU TIÊN trên máy trống -> app-postgres chưa tồn
+# tại -> alembic không resolve được host -> lỗi giả "drift". Đảm bảo app-postgres sống trước khi
+# pre-flight (no-op/idempotent nếu đã chạy sẵn từ lần deploy trước).
+echo "==> 3z) Đảm bảo app-postgres sống (cần cho pre-flight) — no-op nếu đã chạy"
+docker compose up -d app-postgres
+for i in $(seq 1 30); do
+  docker compose exec -T app-postgres pg_isready -U postgres >/dev/null 2>&1 && break
+  sleep 2
+done
+
 echo "==> 3a) PRE-FLIGHT migration — image MỚI có định vị được revision DB không? (chặn drift TRƯỚC khi đụng prod)"
 # `alembic current` (READ-ONLY): đọc alembic_version trong DB rồi tra trong lịch sử migration
 # của IMAGE MỚI. Lỗi 'Can't locate revision' = DB tiến trước image (drift) -> hr-migrate sẽ exit
