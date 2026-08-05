@@ -130,10 +130,12 @@ jobs:
             rrwlf=$(has '.=="rag-worker"')
             rd=$(has '.=="rag-worker" or .=="mcp-service" or .=="hr-service" or .=="user-service" or .=="document-service" or .=="query-service" or .=="ai-router" or .=="frontend" or .=="nginx" or .=="base"')
           fi
-          # Bỏ qua validate nhưng GIỮ build + deploy.
+          # Bỏ qua validate nhưng GIỮ build + deploy. (fix 2026-08-05: trước đây SVC/rfe KHÔNG bị
+          # xoá -> unit/frontend-test vẫn chạy dù skip_tests=true, sai với comment/ý định gốc.)
           if [ "$SKIP" = "true" ]; then
-            rrag=false; rhr=false; rec=false; rlf=false; rls=false; rrwlf=false
-            echo "::notice::skip-tests bật -> BỎ QUA Phase 1 validate, chỉ build + deploy"
+            rrag=false; rhr=false; rec=false; rlf=false; rls=false; rrwlf=false; rfe=false
+            SVC='[]'
+            echo "::notice::skip-tests bật -> BỎ QUA Phase 1 validate (kể cả unit/frontend-test), chỉ build + deploy"
           fi
           # SOFT-DETECT migration embedding: marker [embed-migration] HOẶC EMBED_MODEL đổi trong
           # common.env -> collection MỚI rỗng -> e2e content (search ra 0) đỏ KHÔNG do regression
