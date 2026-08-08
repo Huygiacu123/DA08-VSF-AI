@@ -464,8 +464,11 @@ SMOKE_CONV_RAG=$(python3 -c 'import uuid; print(uuid.uuid4())')
 SMOKE_CONV_HR=$(python3 -c 'import uuid; print(uuid.uuid4())')
 
 if [ "$SMOKE_DOC" = "true" ]; then
-  dcode=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 25 -H "Authorization: Bearer $TOK" http://localhost:${NGINX_PORT}/api/documents)
-  echo "  [DOC] GET /api/documents -> $dcode"
+  # /api/documents/ (CÓ trailing slash) — đúng cách frontend-admin thật gọi (xem
+  # documentService.ts: dùng '/' để interceptor ghép prefix). Nginx chỉ có location cho
+  # dạng có trailing slash; bare /api/documents rơi vào catch-all frontend -> 404 giả.
+  dcode=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 25 -H "Authorization: Bearer $TOK" http://localhost:${NGINX_PORT}/api/documents/)
+  echo "  [DOC] GET /api/documents/ -> $dcode"
   case "$dcode" in 2*) : ;; *) echo "::error::SMOKE documents FAIL ($dcode)"; docker compose logs --no-color --tail 80 document-service || true; exit 1 ;; esac
 fi
 
