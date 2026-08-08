@@ -631,7 +631,11 @@ jobs:
           trap 'rm -f "$SSHKEY"' EXIT
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSHKEY"
           chmod 600 "$SSHKEY"
-          SSH_OPTS=(-i "$SSHKEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
+          # ServerAliveInterval/CountMax: lệnh remote (health-check polling) có thể im lặng nhiều
+          # phút -> không có keepalive thì NAT/firewall trung gian âm thầm cắt kết nối TCP, ssh
+          # thoát exit 255 dù lệnh remote vẫn đang chạy tốt (đã từng gặp thật ở lần deploy trước).
+          SSH_OPTS=(-i "$SSHKEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
+                     -o ServerAliveInterval=30 -o ServerAliveCountMax=10)
           RTMP="/tmp/deploy-payload-${GITHUB_RUN_ID}.sh"
           scp "${SSH_OPTS[@]}" "$PAYLOAD" "${SSH_USER}@${SSH_HOST}:${RTMP}"
           rm -f "$PAYLOAD"
