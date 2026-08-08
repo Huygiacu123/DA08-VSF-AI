@@ -616,7 +616,9 @@ services:
       - frontend-chat
       - frontend-admin
     ports:
-      - "80:80"
+      # VPS dùng chung với project khác (1089.online) — host nginx của "anh" đã chiếm port 80/443
+      # và sẽ reverse-proxy sang port này. KHÔNG đổi lại 80:80 nếu chưa xác nhận port 80 đã rảnh.
+      - "8090:80"
     volumes:
       # .htpasswd cho Basic Auth subdomain langfuse — render từ GitHub Secret lúc deploy
       # (render-secrets.sh), gitignored, fail-closed nếu secret rỗng. CHỈ mount file secret
